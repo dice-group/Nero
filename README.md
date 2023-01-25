@@ -29,6 +29,7 @@ pip3 install scikit-learn==0.24.2
 pip3 install seaborn==0.12.2
 pip3 install gradio==3.16.2
 pip3 install psutil==5.9.4
+pip3 install pytest==7.2.1
 # Install ontolearn library
 wget https://github.com/dice-group/Ontolearn/archive/refs/tags/0.4.0.zip
 unzip 0.4.0.zip
@@ -37,11 +38,15 @@ python -c 'from setuptools import setup; setup()' develop
 python -c "import ontolearn"
 cd ..
 ```
-
-# Datasets and Learning Problems 
-```sh
+To test the Installation
+```
 # Ontologies with assertions and # Learning Problems {(E^+, E^-)}
 unzip KGs.zip && unzip LPs.zip
+pytest -p no:warnings -x tests
+```
+# Datasets and Learning Problems 
+```sh
+
 ```
 
 # Unsupervised Training

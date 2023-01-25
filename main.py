@@ -1,33 +1,9 @@
-"""
-====================================================================
-Deep Tunnelling
-====================================================================
-Drill with training.
-Authors: Caglar Demir
-
-(1) Parse input knowledge base.
-(2) Generate N number of random learning problems.
-(3) Sample T number of class expressions as labels/targets.
-(4) Generate F-measure distributed of (2) over (3).
-(5) Train a permutation invariant neural net on (2) to approximate (4).
-"""
 from argparse import ArgumentParser
-
 from core.experiment import Experiment
 import torch
-from torch import nn
 import random
 
-random.seed(0)
-torch.manual_seed(0)
-
-
-def main(args):
-    Experiment(args).start()
-
-
-# OWL version 1 and OWL 2, our library only works with OWL 2
-if __name__ == '__main__':
+def argparse_default(description=None):
     parser = ArgumentParser()
     # General
     parser.add_argument("--path_knowledge_base", type=str,
@@ -45,7 +21,6 @@ if __name__ == '__main__':
                         help='Input set size |E^+| and |E^-|.')
     parser.add_argument("--num_of_learning_problems_training", type=int, default=1,
                         help='Total number of LP => this val x |target exp|.')
-
     # Neural related
     parser.add_argument("--neural_architecture", type=str,
                         default='DeepSet',
@@ -55,10 +30,8 @@ if __name__ == '__main__':
     parser.add_argument("--loss_func", type=str,
                         default='MSELoss',
                         help='[MSELoss,HuberLoss,CrossEntropyLoss]')
-
     parser.add_argument("--number_of_target_expressions", type=int,
                         default=1000)
-
     parser.add_argument("--target_expression_selection", type=str,
                         default='uncorrelated_target_expression_selection')
     # Hyperparameters of Neural Class Expression
@@ -67,15 +40,21 @@ if __name__ == '__main__':
     parser.add_argument("--learning_rate", type=float, default=0.1, help='Learning Rate')
     parser.add_argument("--num_epochs", type=int, default=50, help='Number of iterations over the entire dataset.')
     parser.add_argument("--val_at_every_epochs", type=int, default=500, help='How often eval.')
-
     parser.add_argument("--batch_size", type=int, default=1024)
     # Inference Related
     parser.add_argument("--topK", type=int, default=10,
                         help='Test the highest topK target expressions')
-
     # Analysis Related
-    parser.add_argument("--plot_embeddings", type=int, default=1, help='1 => Yes, 0 => No')
+    parser.add_argument("--plot_embeddings", type=int, default=0, help='1 => Yes, 0 => No')
     parser.add_argument('--use_search', default='None', help='None,SmartInit')
+    if description is None:
+        return parser.parse_args()
+    return parser.parse_args(description)
 
-    # parser.add_argument("--eval_dl_learner", type=int, default=1, help='1 => Yes, 0 => No')
-    main(vars(parser.parse_args()))
+def main(args):
+    Experiment(args).start()
+
+
+# OWL version 1 and OWL 2, our library only works with OWL 2
+if __name__ == '__main__':
+    main(vars(argparse_default()))

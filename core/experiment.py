@@ -22,7 +22,9 @@ import os
 from random import randint
 import time
 import gc
-
+import typing
+random.seed(0)
+torch.manual_seed(0)
 
 class Experiment:
     """ Main class for conducting experiments """
@@ -47,11 +49,19 @@ class Experiment:
 
     def initialize_knowledge_base(self) -> KnowledgeBase:
         """
-        Initialize a knowledge base
-        :return:
+        Initialize knowledge base
+
+        Parameter: None
+        ---------
+
+        Returns: KnowledgeBase
+        ---------
+
         """
+
         self.logger.info(f"Knowledge Base being Initialized {self.args['path_knowledge_base']}")
         # (1) Create ontolearn.KnowledgeBase instance
+        # @TODO: Create KB class that uses polars or pandas to read and process an RDF KB.
         kb = KnowledgeBase(path=self.args['path_knowledge_base'],
                            reasoner_factory=ClosedWorld_ReasonerFactory)
         # (2) Store and Log some info about KB
@@ -70,8 +80,17 @@ class Experiment:
             exit(1)
         return kb
 
-    def construct_targets_and_problems(self, kb: KnowledgeBase) -> LP:
-        """ Construct target class expressions, i.e., chose good labels. """
+    def construct_targets_and_problems(self, kb: KnowledgeBase) -> typing.Tuple[LP, object]:
+        """
+        Construct target class expressions, i.e., choose good labels for a multi-label classification problem
+
+        Parameter: KnowledgeBase
+        ---------
+
+        Returns: A tuple containing an LP object with a refinement operator object.
+        ---------
+
+        """
         # (1) Select target expressions according to input strategy
         rho = None
         target_class_expressions, instance_idx_mapping, rho = select_target_expressions(kb, self.args,
@@ -88,20 +107,21 @@ class Experiment:
 
     def describe_and_store(self) -> None:
         """
-        Store learning
-        :return:
+        Describe and save data
+
+        Parameter:
+        ---------
+
+        Returns: None
+        ---------
+
         """
+
         assert self.args['num_instances'] > 0
         self.logger.info('Experimental Setting is being serialized.')
         if torch.cuda.is_available():
             self.logger.info('Name of selected Device:{0}'.format(torch.cuda.get_device_name(self.trainer.device)))
 
-        # (1) Store Learning Problems; We do not need to store them
-        # self.logger.info('Serialize Learning Problems.')
-        # save_as_json(storage_path=self.storage_path,
-        #             obj={i: {'Pos': e_pos, 'Neg': e_neg} for i, (e_pos, e_neg) in
-        #                  enumerate(zip(self.lp.e_pos, self.lp.e_neg))},
-        #             name='training_learning_problems')
         self.logger.info('Serialize Index of Instances.')
         # (2) Store Integer mapping of instance: index of individuals
         save_as_json(storage_path=self.storage_path,
@@ -111,33 +131,34 @@ class Experiment:
         self.logger.info('Serialize Pandas Dataframe containing target expressions')
         df = pd.DataFrame([t.__dict__ for t in self.lp.target_class_expressions])
         df.to_csv(path_or_buf=self.storage_path + '/target_class_expressions.csv')
-        # print(total_size(self.lp.target_class_expressions))
-        # print(df.memory_usage(deep=True).sum())
-        # Pandas require more memory than self.lp.target_class_expressions or our memory calculating of a list of
-        # items in correct
         del df
         gc.collect()
-        # self.logger.info('Serialize Targets as json.')
-        # save_as_json(storage_path=self.storage_path, obj={target_cl.label_id: {'label_id': target_cl.label_id,
-        #                                                                       'name': target_cl.name,
-        #                                                                       'expression_chain': target_cl.expression_chain,
-        #                                                                       'idx_individuals': list(
-        #                                                                           target_cl.idx_individuals),
-        #                                                                       }
-        #                                                  for target_cl in self.lp.target_class_expressions},
-        #             name='target_class_expressions')
-
         self.args['num_outputs'] = len(self.lp.target_class_expressions)
         # (4) Store input settings
         save_as_json(storage_path=self.storage_path, obj=self.args, name='settings')
         # (5) Log details about input KB.
 
-    def start(self):
+    def start(self) -> None:
+        """
+         Train and Eval NERO
+
+        (1) Train Nero on generated learning problems
+        (2) Eval Nero if learning problems are given.
+
+        Parameter: None
+        ---------
+
+        Returns: None
+        ---------
+
+        """
+
         # (1) Train model & Validate
         self.logger.info('Experiment starts')
         start_time = time.time()
+        # (1) Train NERO.
         nero = self.trainer.start()
-
+        # (2) Evaluate it on some learning problems.
         if self.args['path_lp'] is not None:
             # (2) Load learning problems
             with open(self.args['path_lp']) as json_file:
@@ -150,15 +171,30 @@ class Experiment:
 
         self.logger.info(f'Total Runtime of the experiment:{time.time() - start_time}')
 
-    def evaluate(self, ncel, lp, args) -> None:
+    def evaluate(self, nero, lp, args) -> None:
+        """
+         Evalueate a pre-trained model
+
+        Parameter: None
+        ---------
+        ncel:
+
+        lp:
+
+        args:
+        Returns: None
+        ---------
+
+        """
         self.logger.info(f'Evaluation Starts on {len(lp)} number of learning problems')
+        nero.target_class_expressions = pd.read_csv(self.storage_path + '/target_class_expressions.csv', index_col=0)
 
         ncel_results = dict()
         # (1) Iterate over input learning problems.
         for _, (goal_exp, p, n) in enumerate(lp):
-            ncel_report = ncel.fit(str_pos=p, str_neg=n,
-                                   topK=args['topK'],
-                                   use_search=args['use_search'], kb_path=args['path_knowledge_base'])
+            ncel_report = nero.fit(str_pos=p, str_neg=n,
+                                   topk=args['topK'],
+                                   use_search=args['use_search'])
             ncel_report.update({'Target': goal_exp})
 
             ncel_results[_] = ncel_report
