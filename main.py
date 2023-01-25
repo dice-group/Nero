@@ -1,18 +1,26 @@
 from argparse import ArgumentParser
-from core.experiment import Experiment
+from core import Execute
 import torch
 import random
+
 
 def argparse_default(description=None):
     parser = ArgumentParser()
     # General
     parser.add_argument("--path_knowledge_base", type=str,
                         default='KGs/Family/Family.owl',
-                        # default='KGs/DBpedia/DBpedia.owl',
-                        help='The absolute path of a knowledge base required.')
+                        help="An absolute path of an RDF knowledge base")
+    parser.add_argument("--storage_path", type=str, default='Experiments',
+                        help="Embeddings, model, and any other related data will be stored therein.")
+    parser.add_argument("--backend", type=str, default='ontolearn',
+                        help="A backend to read/process an RDF knowledge base. "
+                             "Polars and pandas require the data to be in the n-triple format"
+                             "'Select [polars(seperator: \t), pandas(seperator: \s+)]")
+
     parser.add_argument("--path_lp", type=str,
                         default='LPs/Family/lp_dl_learner.json',
                         help='If None, examples are randomly generated')
+
     parser.add_argument("--dl_learner_binary_path", type=str, default='dllearner-1.4.0/')
     parser.add_argument('--num_workers', type=int, default=3, help='Number of cpus used during batching')
 
@@ -51,10 +59,7 @@ def argparse_default(description=None):
         return parser.parse_args()
     return parser.parse_args(description)
 
-def main(args):
-    Experiment(args).start()
-
 
 # OWL version 1 and OWL 2, our library only works with OWL 2
 if __name__ == '__main__':
-    main(vars(argparse_default()))
+    Execute(argparse_default()).start()

@@ -1,4 +1,4 @@
-from main import argparse_default, Experiment
+from main import argparse_default, Execute
 class TestDefaultParams:
     def test(self):
-        Experiment(vars(argparse_default([]))).start()
+        Execute(argparse_default([])).start()

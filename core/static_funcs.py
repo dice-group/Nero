@@ -40,11 +40,11 @@ def timeit(func):
     @functools.wraps(func)
     def timeit_wrapper(*args, **kwargs):
         start_time = time.perf_counter()
+        print(f'{func.__name__} func. being computed...')
         result = func(*args, **kwargs)
         end_time = time.perf_counter()
         total_time = end_time - start_time
-        print(
-            f'Took {total_time:.4f} seconds | Current Memory Usage {psutil.Process(os.getpid()).memory_info().rss / 1000000: .5} in MB')
+        print(f'Computing {func.__name__} took {total_time:.4f} seconds | Current Memory Usage {psutil.Process(os.getpid()).memory_info().rss / 1000000: .5} in MB')
         return result
 
     return timeit_wrapper
@@ -116,39 +116,28 @@ def get_all_quantifiers(kb, atomic_expressions):
                               expression_chain=['non']))
     return get_all_universal_quantifiers(kb, dummy), get_all_existential_quantifiers(kb, dummy)
 
-
-def select_target_expressions(kb, args, logger):
-    """
-    Select target expressions
-    :param kb:
-    :param args:
-    :param logger:
-    :return: a list of target expressions and a dictionary of URI to integer index
-    """
-    logger.info(f'Target Expressions being selected under the {args["target_expression_selection"]}.')
+@timeit
+def select_target_expressions(kb, args):
     # (1) Individual to integer mapping
     instance_idx_mapping = {individual.get_iri().as_str(): i for i, individual in enumerate(kb.individuals())}
-    number_of_target_expressions = args['number_of_target_expressions']
+    number_of_target_expressions = args.number_of_target_expressions
     rho = None
     # (2) Target Expression selection
-    if args['target_expression_selection'] == 'diverse_target_expression_selection':
+    if args.target_expression_selection == 'diverse_target_expression_selection':
         target_class_expressions = diverse_target_expression_selection(kb,
                                                                        args['tolerance_for_search_unique_target_exp'],
                                                                        number_of_target_expressions,
-                                                                       instance_idx_mapping,
-                                                                       logger)
-    elif args['target_expression_selection'] == 'random_target_expression_selection':
+                                                                       instance_idx_mapping)
+    elif args.target_expression_selection == 'random_target_expression_selection':
         target_class_expressions = random_target_expression_selection(kb,
                                                                       number_of_target_expressions,
-                                                                      instance_idx_mapping,
-                                                                      logger)
-    elif args['target_expression_selection'] == 'uncorrelated_target_expression_selection':
+                                                                      instance_idx_mapping)
+    elif args.target_expression_selection == 'uncorrelated_target_expression_selection':
         target_class_expressions, rho = uncorrelated_target_expression_selection(kb,
                                                                                  number_of_target_expressions,
-                                                                                 instance_idx_mapping,
-                                                                                 logger)
+                                                                                 instance_idx_mapping)
     else:
-        raise KeyError(f'target_expression_selection:{args["target_expression_selection"]}')
+        raise KeyError(f'target_expression_selection:{args.target_expression_selection}')
     return target_class_expressions, instance_idx_mapping, rho
 
 
@@ -326,8 +315,7 @@ def reduce_redundancy(sequence_of_exp) -> Set:
 
 
 def uncorrelated_target_expression_selection(kb, number_of_target_expressions,
-                                             instance_idx_mapping,
-                                             logger):
+                                             instance_idx_mapping):
     """
     (1) Refine Top expression and obtain all possible ALC expressions up to length 3
     (1.1) Consider only those expression as labels whose set of individuals has not been seen before
@@ -341,8 +329,7 @@ def uncorrelated_target_expression_selection(kb, number_of_target_expressions,
     neg_nc = rho.negated_named_class_expressions()
     q = rho.all_quantifiers()
     uncorrelated_refinements = reduce_redundancy(nc + neg_nc + q)
-    logger.info(
-        f'{len(uncorrelated_refinements)} number of target expressions are obtained from the atomic expressions, negations and quantifiers')
+    #print(f'{len(uncorrelated_refinements)} number of target expressions are obtained from the atomic expressions, negations and quantifiers')
     del nc, neg_nc, q
     gc.collect()
     if len(uncorrelated_refinements) < number_of_target_expressions:
@@ -353,8 +340,7 @@ def uncorrelated_target_expression_selection(kb, number_of_target_expressions,
             n = number_of_target_expressions - len(uncorrelated_refinements)
     else:
         """ do nothing """
-    logger.info(
-        f'{len(uncorrelated_refinements)} number of target expressions are obtained from intersecting and union of the atomic expressions ,negations and quantifiers')
+    #print(f'{len(uncorrelated_refinements)} number of target expressions are obtained from intersecting and union of the atomic expressions ,negations and quantifiers')
 
     assert uncorrelated_refinements == reduce_redundancy(uncorrelated_refinements)
     uncorrelated_refinements = sorted(uncorrelated_refinements, key=lambda x: x.length)
@@ -364,14 +350,13 @@ def uncorrelated_target_expression_selection(kb, number_of_target_expressions,
         ce.idx_individuals = set(instance_idx_mapping[i] for i in ce.str_individuals)
         result.append(ce)
     gc.collect()
-    logger.info(
-        f'{len(result)} number of target expressions are obtained.')
+    #print(f'{len(result)} number of target expressions are obtained.')
     assert len(result) >= number_of_target_expressions
     return result, rho
 
-
+@timeit
 def diverse_target_expression_selection(kb, tolerance_for_search_unique_target_exp, number_of_target_expressions,
-                                        instance_idx_mapping, logger) -> Tuple[
+                                        instance_idx_mapping) -> Tuple[
     List[TargetClassExpression], Dict]:
     """
     (1) Refine Top expression and obtain all possible ALC expressions up to length 3
@@ -392,20 +377,19 @@ def diverse_target_expression_selection(kb, tolerance_for_search_unique_target_e
         number_of_target_expressions=number_of_target_expressions,
         num_of_all_individuals=num_of_all_individuals,
         instance_idx_mapping=instance_idx_mapping)
-    logger.info(
-        f'{len(target_class_expressions)} number of target expressions are obtained from the most general expression.')
+    print(f'{len(target_class_expressions)} number of target expressions are obtained from the most general expression.')
     assert len(target_idx_instance_set) == len(target_class_expressions)
     # (3) Refine refinements of \top further.
     refine_selected_expressions(rho, kb, quantifiers, target_class_expressions, target_idx_instance_set,
                                 tolerance_for_search_unique_target_exp, instance_idx_mapping,
                                 number_of_target_expressions, num_of_all_individuals)
-    logger.info(
+    print(
         f'{len(target_class_expressions)} number of target expressions are obtained from the most general expression and quantifiers')
     assert len(target_idx_instance_set) == len(target_class_expressions)
     # (4) Intersect them.
     intersect_and_union_expressions_from_iterable(target_class_expressions, target_idx_instance_set,
                                                   number_of_target_expressions)
-    logger.info(
+    print(
         f'{len(target_class_expressions)} number of target expressions are obtained from the most general expression, quantifiers, and intersect/union all previous expressions')
     assert len(target_idx_instance_set) == len(target_class_expressions)
     # (5) Add an id to a target expression/ a label.
@@ -417,7 +401,7 @@ def diverse_target_expression_selection(kb, tolerance_for_search_unique_target_e
     gc.collect()
     return sorted(result, key=lambda x: x.length)
 
-
+@timeit
 def random_target_expression_selection(kb, number_of_target_expressions, instance_idx_mapping, logger) -> Tuple[
     List[TargetClassExpression], Dict]:
     """
@@ -443,7 +427,7 @@ def random_target_expression_selection(kb, number_of_target_expressions, instanc
             if isinstance(i.concept, OWLObjectAllValuesFrom) or isinstance(i.concept, OWLObjectSomeValuesFrom):
                 quantifiers.add(i)
             if len(target_class_expressions) == number_of_target_expressions:
-                logger.info(f'{number_of_target_expressions} target expressions generated')
+                print(f'{number_of_target_expressions} target expressions generated')
                 break
     # (5) Refine
     if len(target_class_expressions) < number_of_target_expressions:
@@ -477,7 +461,7 @@ def random_target_expression_selection(kb, number_of_target_expressions, instanc
 
 def generate_learning_problems_from_targets(target_class_expressions: List[TargetClassExpression],
                                             instance_idx_mapping: Dict,
-                                            args: Dict, logger) -> Tuple[List[int], List[int]]:
+                                            args: Dict) -> Tuple[List[int], List[int]]:
     """
     Sample pos from targets
 
@@ -486,14 +470,14 @@ def generate_learning_problems_from_targets(target_class_expressions: List[Targe
     :param args:
     :return:
     """
-    logger.info('Learning Problems are being sampled from Targets')
+    print('Learning Problems are being sampled from Targets')
     instances_idx_list = list(instance_idx_mapping.values())
 
     pos_examples = []
     neg_examples = []
-    num_individual_per_example = args['num_individual_per_example']
+    num_individual_per_example = args.num_individual_per_example
     n = 0
-    for i in range(args['num_of_learning_problems_training']):
+    for i in range(args.num_of_learning_problems_training):
         for tce in target_class_expressions:
             try:
                 pos_examples.append(random.choices(list(tce.idx_individuals), k=num_individual_per_example))
@@ -681,9 +665,6 @@ def create_logger(*, name, p):
     return logger
 
 
-def save_weights(model, storage_path):
-    model.to('cpu')
-    torch.save(model.state_dict(), storage_path + f'/final_model.pt')
 
 
 def selective_2Dplot(pre_trained_nero, concepts, f=sns.scatterplot, path_save_fig='2dplot.png'):
@@ -704,3 +685,41 @@ def selective_2Dplot(pre_trained_nero, concepts, f=sns.scatterplot, path_save_fi
     plt.savefig(path_save_fig)
     plt.plot()
     plt.show()
+
+
+def validate(model, lp, args, info):
+    print(f'{info}')
+    model.eval()
+    results = dict()
+
+    for _, (p, n) in enumerate(lp):
+        with torch.no_grad():
+            ith_results = model.fit(str_pos=p, str_neg=n, topk=args['topk'])
+            ith_results.update({'P': p, 'N': n,
+                                'F-measure': f_measure(instances=ncel_report['Instances'],
+                                                       positive_examples=set(p),
+                                                       negative_examples=set(n))})
+
+            results[_] = ith_results
+    avg_f1_ncel = np.array([i['F-measure'] for i in results.values()]).mean()
+    avg_runtime_ncel = np.array([i['Runtime'] for i in results.values()]).mean()
+    avg_expression_ncel = np.array([i['NumClassTested'] for i in results.values()]).mean()
+    print(
+        f'Avg. F-measure NERO:{avg_f1_ncel}\t Avg. Runtime:{avg_runtime_ncel}\t Avg. Expression Tested:{avg_expression_ncel} in {len(lp)} LPs ')
+    print('Validation Ends')
+
+
+def select_loss_and_optim(loss_func_name: str, learning_rate: float, model_params) -> Tuple:
+    # During our training, using MSE results in better results, less num of concepts explored
+    if loss_func_name == 'MSELoss':
+        loss_func = torch.nn.MSELoss()
+    elif loss_func_name == 'CrossEntropyLoss':
+        loss_func = torch.nn.CrossEntropyLoss()
+    elif loss_func_name == 'HuberLoss':
+        loss_func = torch.nn.HuberLoss()
+    else:
+        raise KeyError
+
+    optimizer = torch.optim.Adam(model_params, lr=learning_rate)
+    return loss_func, optimizer
+

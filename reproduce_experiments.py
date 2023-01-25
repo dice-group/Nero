@@ -6,7 +6,10 @@ import time
 from typing import Dict
 import torch
 import json
-from core import NERO, DeepSet, ST, TargetClassExpression, f_measure
+from core.model import NERO
+from core.neural_arch import DeepSet, ST
+from core.expression import TargetClassExpression
+from core.static_funcs import f_measure
 from random import randint
 from argparse import ArgumentParser
 import random
