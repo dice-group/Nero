@@ -102,7 +102,7 @@ def load_ncel(args: Dict) -> NERO:
     return model
 
 
-def launch_service(nero):
+def launch_service(nero, server_name: str = None, server_port: int = None):
     def predict(positive_examples, negative_examples, size_of_examples, random_examples: bool):
         if random_examples:
             # Either sample from here self.instance_idx_mapping
@@ -129,16 +129,18 @@ def launch_service(nero):
                 gr.inputs.Textbox(lines=5, placeholder=None, label='Negative Examples'),
                 gr.inputs.Slider(minimum=1, maximum=100),
                 "checkbox"],
-        outputs=[gr.outputs.Textbox(label='Learning Problem'), gr.outputs.Dataframe(label='Predictions',type='pandas')],
-        title='Rapid Induction of Description Logic Expressions via Nero',
-        description='Click Random Examples & Submit.').launch(server_name="0.0.0.0",server_port=7860,share=False)
+        outputs=[gr.outputs.Textbox(label='Learning Problem'),
+                 gr.outputs.Dataframe(label='Predictions', type='pandas')],
+        title='Class Expression Learning',
+        description='Click Random Examples & Submit.').launch(server_name=server_name, server_port=server_port,
+                                                              share=False)
 
 
 def run(args):
     print('Loading Nero...')
     ncel_model, loading_time_to_add = load_nero(args)
     print(f'Nero is loaded:{loading_time_to_add}')
-    launch_service(ncel_model)
+    launch_service(ncel_model, server_name=args.server_name, server_port=args.server_port)
 
 
 if __name__ == '__main__':
@@ -152,4 +154,6 @@ if __name__ == '__main__':
     parser.add_argument("--use_multiprocessing_at_parsing", type=int,
                         default=0, help='1 or 0')
     parser.add_argument('--use_search', default='None', help='None,SmartInit')
+    parser.add_argument('--server_port', default=7860, type=int)
+    parser.add_argument('--server_name', default="0.0.0.0")
     run(parser.parse_args())
