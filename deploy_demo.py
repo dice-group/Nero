@@ -131,7 +131,7 @@ def launch_service(nero):
                 "checkbox"],
         outputs=[gr.outputs.Textbox(label='Learning Problem'), gr.outputs.Dataframe(label='Predictions',type='pandas')],
         title='Rapid Induction of Description Logic Expressions via Nero',
-        description='Click Random Examples & Submit.').launch()
+        description='Click Random Examples & Submit.').launch(server_name="0.0.0.0",server_port=7860,share=False)
 
 
 def run(args):
