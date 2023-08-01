@@ -27,7 +27,7 @@ pip3 install torch==1.10
 pip3 install pandas==1.3.4
 pip3 install scikit-learn==0.24.2
 pip3 install seaborn==0.12.2
-pip3 install gradio==3.16.2
+pip3 install gradio==3.15.0
 pip3 install psutil==5.9.4
 # Install ontolearn library
 wget https://github.com/dice-group/Ontolearn/archive/refs/tags/0.4.0.zip
