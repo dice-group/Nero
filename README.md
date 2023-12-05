@@ -15,6 +15,8 @@ concept space, rather than starting in the most general concept ⊤.
 
 ![alt text](core/figures/kb.png)
 
+# We created [Ontolearn](https://github.com/dice-group/Ontolearn) involving NERO and many other learners
+
 
 # Installation
 Create a anaconda virtual environment and install dependencies.
