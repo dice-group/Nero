@@ -115,6 +115,3 @@ Running on local URL:  http://127.0.0.1:7860/
 ```
 ![alt text](core/figures/deploy_1.png)
 ![alt text](core/figures/deploy_2.png)
-
-## Contact
-For any questions or wishes, please contact:  ```caglar.demir@upb.de``` or ```caglardemir8@gmail.com```
